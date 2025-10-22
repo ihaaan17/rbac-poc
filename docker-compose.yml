@@ -1,0 +1,17 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15  # Official PostgreSQL image, version 15 (stable, widely used).
+    restart: always  # Auto-restart on crash for reliability.
+    environment:
+      POSTGRES_USER: root  
+      POSTGRES_PASSWORD: rootpassword 
+      POSTGRES_DB: defaultdb 
+    ports:
+      - "5432:5432"  # Exposes PostgreSQL port to your machine.
+    volumes:
+      - db_data:/var/lib/postgresql/data  # Persists DB data.
+
+volumes:
+  db_data:  # Named volume for data persistence.
