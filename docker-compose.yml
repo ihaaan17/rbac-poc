@@ -12,6 +12,7 @@ services:
       - "5432:5432"  # Exposes PostgreSQL port to your machine.
     volumes:
       - db_data:/var/lib/postgresql/data  # Persists DB data.
+    container_name: rbac-app-db
 
 volumes:
   db_data:  # Named volume for data persistence.
