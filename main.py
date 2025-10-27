@@ -9,16 +9,12 @@ from app.models import User, Role, Permission, user_roles, role_permissions
 from app.core.jwt import create_access_token, verify_token
 from app.core.config import settings
 
-# Initialize FastAPI app
 app = FastAPI(title="RBAC POC")
 
-# Password hashing - using Argon2 (recommended)
 password_hash = PasswordHash((Argon2Hasher(),))
 
-# OAuth2 scheme
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/login")
 
-# Database session dependency
 def get_db():
     db = SessionLocal()
     try:
@@ -49,10 +45,8 @@ def has_permission(permission_name: str):
         raise HTTPException(status_code=403, detail=f"Permission '{permission_name}' required")
     return check_permission
 
-# Create DB schema
 Base.metadata.create_all(bind=engine)
 
-# Sub‑applications
 school_app = FastAPI(title="School API")
 university_app = FastAPI(title="University API")
 company_app = FastAPI(title="Company API")
@@ -66,7 +60,6 @@ app.mount("/api/company", company_app)
 async def health():
     return {"status": "ok"}
 
-# Bootstrap endpoint - FOR TESTING ONLY, REMOVE IN PRODUCTION
 @app.post("/api/bootstrap")
 async def bootstrap(email: str, db: Session = Depends(get_db)):
     """Create initial admin user with all permissions - USE ONLY FOR TESTING"""
@@ -74,7 +67,6 @@ async def bootstrap(email: str, db: Session = Depends(get_db)):
     if not user:
         raise HTTPException(status_code=404, detail="User not found. Register first.")
     
-    # Extract the string value from the enum
     org_type = user.organization_type.value
     org_id = user.organization_id
     
@@ -85,7 +77,6 @@ async def bootstrap(email: str, db: Session = Depends(get_db)):
         "role_assigned": False
     }
     
-    # Create admin role
     admin_role = db.query(Role).filter(
         Role.name == "admin",
         Role.organization_type == org_type,
@@ -99,7 +90,6 @@ async def bootstrap(email: str, db: Session = Depends(get_db)):
         db.refresh(admin_role)
         created_items["role_created"] = True
     
-    # Create all permissions
     permission_names = [
         "create_user", "assign_manager", "create_role", 
         "assign_permission", "access_document", "assign_role", "list_users"
@@ -123,9 +113,8 @@ async def bootstrap(email: str, db: Session = Depends(get_db)):
             admin_role.permissions.append(perm)
             created_items["permissions_assigned"].append(perm_name)
     
-    db.commit()  # Important: commit after adding all permissions
+    db.commit()  
     
-    # Assign admin role to user
     if admin_role not in user.roles:
         user.roles.append(admin_role)
         created_items["role_assigned"] = True
@@ -180,6 +169,7 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = 
     return {"access_token": access_token, "token_type": "bearer"}
 
 # School: create student
+    # organisation specific endpoint
 @school_app.post("/{school_id}/create-student")
 async def create_student(school_id: int, student_email: str, student_password: str, db: Session = Depends(get_db),
                          current_user: User = Depends(get_current_user),
@@ -218,7 +208,6 @@ async def assign_education_manager(school_id: int, student_id: int, manager_id: 
 
     return {"message": "Education manager assigned successfully"}
 
-# Create role
 # Create role
 @app.post("/api/{org_type}/{org_id}/create-role")
 async def create_role(org_type: str, org_id: int, role_name: str, db: Session = Depends(get_db),
@@ -268,7 +257,6 @@ async def assign_permission(org_type: str, org_id: int, role_id: int, permission
         db_role.permissions.append(db_permission)
         db.commit()
     return {"message": "Permission assigned successfully"}
-# Access protected document
 @school_app.get("/{school_id}/documents/{document_id}")
 async def access_document(school_id: int, document_id: int, db: Session = Depends(get_db),
                           current_user: User = Depends(get_current_user),
@@ -277,7 +265,6 @@ async def access_document(school_id: int, document_id: int, db: Session = Depend
         raise HTTPException(status_code=403, detail="Access denied to this school")
     return {"message": "Document accessed successfully", "document_id": document_id}
 
-# Assign role to user
 @app.post("/api/{org_type}/{org_id}/assign-role")
 async def assign_role(org_type: str, org_id: int, user_id: int, role_name: str, db: Session = Depends(get_db),
                       current_user: User = Depends(get_current_user),
